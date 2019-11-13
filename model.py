@@ -1,16 +1,37 @@
-import numpy as np 
-import os
-import skimage.io as io
-import skimage.transform as trans
-import numpy as np
 from keras.models import *
 from keras.layers import *
-from keras.optimizers import *
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from keras import backend as keras
+from keras.optimizers import SGD, Adam
+from keras import backend as K
+import tensorflow as tf
 
 
-def unet(pretrained_weights = None,input_size = (256,256,1)):
+def dice_coef(y_true, y_pred):
+    smooth = 1.
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f))
+
+
+def dice_coef_loss(y_true, y_pred):
+    return -dice_coef(y_true, y_pred)
+
+
+def focal_loss(y_true, y_pred):
+    gamma = 2.
+    alpha = 0.25
+    pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
+    pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
+    return -K.sum(alpha * K.pow(1 - pt_1, gamma) * K.log(pt_1)) -   \
+        K.sum((1 - alpha) * K.pow(pt_0, gamma) * K.log(1 - pt_0))
+
+
+def mixed_loss(y_true, y_pred):
+    alpha = 0.01
+    return alpha * focal_loss(y_true, y_pred) - K.log(1 + dice_coef_loss(y_true, y_pred))
+
+
+def unet(input_size=(256,256,1)):
     inputs = Input(input_size)
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
@@ -50,6 +71,7 @@ def unet(pretrained_weights = None,input_size = (256,256,1)):
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
     conv9 = Conv2D(2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+
     conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
 
     model = Model(input = inputs, output = conv10)
@@ -84,11 +106,9 @@ def unet(pretrained_weights = None,input_size = (256,256,1)):
 
     #model.summary()
 
-    model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
-
-
-    if(pretrained_weights):
-    	model.load_weights(pretrained_weights)
+    sgd = SGD(lr=1e-4, momentum=0.9, decay=0.9, nesterov=True)
+    adam = Adam(lr=1e-5)
+    model.compile(optimizer=sgd, loss = dice_coef_loss, metrics = ['accuracy', dice_coef])
 
     return model
 
