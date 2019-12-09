@@ -1,13 +1,14 @@
 ## model
-    按照论文的示意图实现
+    unet_original按照论文的示意图实现
     dropout: "Drop-out layers at the end of the contracting path perform further implicit data augmentation."
     pad: valid模式导致边缘损失，concatenate之前先crop特征图
     up-conv: upsampling(rise resolution) + conv(reduce channels)
     last layer: "At the final layer a 1x1 convolution is used to map each 64-component feature vector to the desired number of classes"
 
 ## todolist
-    目前版本是single-class、single-label的，
-    扩展多标签、多类别版本（激活函数、custom loss）
+    1. 目前版本是single-class、single-label的，扩展多标签、多类别版本（激活函数、custom loss
+    2. padding model，输入输出尺寸一致的model
+    3. 衍生model：unet++ etc.
 
 ## multi-class & multi-label
     multi-class的mask是multi-channel的
@@ -20,3 +21,9 @@
     reweighting bce: 正负样本unbalance
     bce_dice: 两个loss调整到相当的数量级
     reweighting dice: 可以对每个通道分别计算dice，然后加权求和
+
+## inference:
+    按照原论文的模型来实现，输入输出大小不同————valid padding的时候有边缘信息损失
+    在做prediction时，为了预测整幅图的分割结果，要输入比原图更大尺寸的图，多出来的部分通过镜像来补全。
+
+
