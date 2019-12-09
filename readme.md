@@ -4,6 +4,10 @@
     pad: valid模式导致边缘损失，concatenate之前先crop特征图
     up-conv: upsampling(rise resolution) + conv(reduce channels)
     last layer: "At the final layer a 1x1 convolution is used to map each 64-component feature vector to the desired number of classes"
+    这种策略主要是针对输入图片patch，带一圈上下文信息，优化分割结果
+    
+    unet_padding做了一点改动
+    该模型针对整张图输入，使用same padding，保留边缘信息，输入输出尺寸相同，是对正幅图的预测
 
 ## todolist
     1. 目前版本是single-class、single-label的，扩展多标签、多类别版本（激活函数、custom loss
@@ -24,6 +28,9 @@
 
 ## inference:
     按照原论文的模型来实现，输入输出大小不同————valid padding的时候有边缘信息损失
-    在做prediction时，为了预测整幅图的分割结果，要输入比原图更大尺寸的图，多出来的部分通过镜像来补全。
+    在做prediction时，为了预测整幅图的分割结果，要输入比原图更大尺寸的图，多出来的部分通过镜像来补全（cv2.copyMakeBorder）。
+
+## 论文笔记:
+    https://amberzzzz.github.io/2019/12/05/unet-vnet/
 
 
