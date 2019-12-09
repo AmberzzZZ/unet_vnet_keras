@@ -6,7 +6,7 @@ from keras.callbacks import ModelCheckpoint
 # model
 model = unet()
 # load pretrained
-model.load_weights("unet_disc.hdf5", by_name=True)
+model.load_weights("unet_disc.hdf5", by_name=True, skip_mismatch=True)
 
 # checkpoint
 filepath = "unet_disc_{epoch:02d}_dice_{dice_coef:.3f}.h5"
