@@ -1,3 +1,4 @@
+# unet
 ## model
     unet_original按照论文的示意图实现
     dropout: "Drop-out layers at the end of the contracting path perform further implicit data augmentation."
@@ -8,6 +9,10 @@
     
     unet_padding做了一点改动
     该模型针对整张图输入，使用same padding，保留边缘信息，输入输出尺寸相同，是对正幅图的预测
+
+## training data
+    1. membrane: 细胞1细胞壁0，512*512，30train+20test，注意正负样本不均匀
+    2. disc: 间盘，512*512，71train+100test
 
 ## todolist
     1. 目前版本是single-class、single-label的，扩展多标签、多类别版本（激活函数、custom loss
@@ -33,4 +38,28 @@
 ## 论文笔记:
     https://amberzzzz.github.io/2019/12/05/unet-vnet/
 
+
+
+
+# vnet
+## model
+    按照原论文中的结构和维度来实现，3D换成2D，不关注原图的第三维
+    residual: element-wise sum
+    unlinearity: PReLU，最后输出的部分有点没看懂，
+    decompression: 解码的residual，一边concatenate了feature map，一边直接作为shortcut，前者channel数肯定多于后者，add之前先做zeropadding
+    output Layer: 最后一层的图有点问题，看图是1*1 conv后面有个PReLU，然后再接一个softmax？？？
+
+## 相比较于unet:
+    residual
+    diceloss
+
+## focal loss nan:
+    nan问题————当对过小的数值进行log操作，返回值将变为nan
+    解决：clamp
+
+## todolist:
+    settings: multi-class & multi-channel & multi-label
+    loss: reweighting & dice efficient
+    data: preparation and augmentation
+    experiment
 

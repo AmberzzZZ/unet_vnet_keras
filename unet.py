@@ -13,8 +13,8 @@ def dice_coef(y_true, y_pred):
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f))
 
 
-def dice_coef_loss(y_true, y_pred):
-    return -dice_coef(y_true, y_pred)
+def dice_loss(y_true, y_pred):
+    return 1 - dice_coef(y_true, y_pred)
 
 
 def focal_loss(y_true, y_pred):
@@ -43,16 +43,17 @@ def reweighting_bce(y_true, y_pred):
     epsilon = K.epsilon()
     pt_1 = K.clip(pt_1, epsilon, 1-epsilon)
     pt_0 = K.clip(pt_0, epsilon, 1-epsilon)
-    beta = tf.constant([0.02, 0.49, 0.49])
-    score = -K.mean(alpha * K.log(pt_1), axis=(0,1,2)) - K.mean((1-alpha) * K.log(1.-pt_0), axis=(0,1,2))
-    score = K.sum(beta * score)
+    score = -K.mean(alpha * K.log(pt_1)) - K.mean((1-alpha) * K.log(1.-pt_0))
+    # beta = tf.constant([0.02, 0.49, 0.49])
+    # score = -K.mean(alpha * K.log(pt_1), axis=(0,1,2)) - K.mean((1-alpha) * K.log(1.-pt_0), axis=(0,1,2))
+    # score = K.sum(beta * score)
     return score
 
 
 def mixed_loss(y_true, y_pred):
-    alpha = 0.01
-    focal_dice = alpha * focal_loss(y_true, y_pred) - K.log(1 + dice_coef_loss(y_true, y_pred))
-    bce_dice = alpha * reweighting_bce(y_true, y_pred) + dice_coef_loss(y_true, y_pred)
+    alpha = 100
+    focal_dice = alpha * focal_loss(y_true, y_pred) - K.log(1 + dice_loss(y_true, y_pred))
+    bce_dice = alpha * reweighting_bce(y_true, y_pred) + dice_loss(y_true, y_pred)
     return bce_dice
 
 
@@ -113,9 +114,9 @@ def unet_original(input_size=(256,256,1), output_channels=1):
 
     model = Model(inputs=inputs, outputs=conv10)
 
-    sgd = SGD(lr=1e-4, momentum=0.9, decay=0.9, nesterov=True)
+    sgd = SGD(lr=1e-4, momentum=0.9, decay=0., nesterov=True)
     adam = Adam(lr=1e-5)
-    model.compile(optimizer=sgd, loss=dice_coef_loss, metrics=['accuracy', dice_coef])
+    model.compile(optimizer=sgd, loss=dice_loss, metrics=['accuracy', dice_coef])
 
     return model
 
@@ -170,9 +171,9 @@ def unet_padding(input_size=(256,256,1), output_channels=1):
 
     model = Model(inputs=inputs, outputs=conv10)
 
-    sgd = SGD(lr=1e-4, momentum=0.9, decay=0.9, nesterov=True)
+    sgd = SGD(lr=1e-4, momentum=0.95, decay=0., nesterov=True)
     adam = Adam(lr=1e-5)
-    model.compile(optimizer=sgd, loss=dice_coef_loss, metrics=['accuracy', dice_coef])
+    model.compile(optimizer=sgd, loss=dice_loss, metrics=['accuracy', dice_coef, dice_loss, reweighting_bce])
 
     return model
 
