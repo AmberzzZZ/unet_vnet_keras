@@ -1,14 +1,16 @@
 # unet
 ## model
     unet_original按照论文的示意图实现
-    dropout: "Drop-out layers at the end of the contracting path perform further implicit data augmentation."
-    pad: valid模式导致边缘损失，concatenate之前先crop特征图
-    up-conv: upsampling(rise resolution) + conv(reduce channels)
-    last layer: "At the final layer a 1x1 convolution is used to map each 64-component feature vector to the desired number of classes"
-    这种策略主要是针对输入图片patch，带一圈上下文信息，优化分割结果
+    1. dropout: "Drop-out layers at the end of the contracting path perform further implicit data augmentation."
+    2. pad: valid模式导致边缘损失，concatenate之前先crop特征图
+    3. up-conv: upsampling(rise resolution) + conv(reduce channels)
+    4. last layer: "At the final layer a 1x1 convolution is used to map each 64-component feature vector to the desired number of classes"
+    5. 这种策略主要是针对输入图片patch，带一圈上下文信息，优化分割结果
     
-    unet_padding做了一点改动
-    该模型针对整张图输入，使用same padding，保留边缘信息，输入输出尺寸相同，是对正幅图的预测
+    unet_padding做了一点改动：
+    1. 该模型针对整张图输入，使用same padding，保留边缘信息，输入输出尺寸相同，是对整幅图的预测
+    2. 每一个卷积层后面接一个batch normalization，替换掉原论文的dropout
+    3. 卷积block可以配置成residual
 
 ## training data
     1. membrane: 细胞1细胞壁0，512*512，30train+20test，注意正负样本不均匀
@@ -16,8 +18,7 @@
 
 ## todolist
     1. 目前版本是single-class、single-label的，扩展多标签、多类别版本（激活函数、custom loss
-    2. padding model，输入输出尺寸一致的model
-    3. 衍生model：unet++ etc.
+    2. 衍生model：unet++ etc.
 
 ## multi-class & multi-label
     multi-class的mask是multi-channel的
@@ -62,4 +63,8 @@
     loss: reweighting & dice efficient
     data: preparation and augmentation
     experiment
+
+## add & concatenate:
+    add操作是by element相加，要求两个输入shape完全相同，如果不同，先zero padding
+    concatenate操作是在channel维度的stack，要求两个输入其他维度的shape相同，channel维度可以不同
 

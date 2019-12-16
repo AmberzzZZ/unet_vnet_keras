@@ -67,7 +67,7 @@ def mix_loss(y_true, y_pred):
     return bce_dice
 
 
-def Conv_block(x, n_filters, kernel_size, strides=1, padding='same',
+def conv_block(x, n_filters, kernel_size, strides=1, padding='same',
                activation=None, kernel_initializer='he_normal', transpose=False):
     if transpose:
         x = Conv2DTranspose(n_filters, kernel_size=kernel_size, strides=strides, padding=padding,
@@ -81,16 +81,16 @@ def Conv_block(x, n_filters, kernel_size, strides=1, padding='same',
 
 
 # for compression
-def resBlock(inpt, stage):
+def comp_block(inpt, stage):
     # conv
     x = inpt
     for _ in range(min(stage, 3)):     # [1,2,3,4]
-        x = Conv_block(x, n_filters=16*(2**(stage-1)), kernel_size=5)
+        x = conv_block(x, n_filters=16*(2**(stage-1)), kernel_size=5)
     feature = add([x, inpt])
 
     # downsampling
     if stage < 5:
-        x = Conv_block(feature, n_filters=16*(2**stage), kernel_size=2, strides=2)
+        x = conv_block(feature, n_filters=16*(2**stage), kernel_size=2, strides=2)
         x = PReLU()(x)
 
     return x, feature
@@ -106,7 +106,7 @@ def pad(args):
 def up_resBlock(inpt, shortcut, stage):
     # deconv
     x = inpt
-    x = Conv_block(x, n_filters=16*(2**(stage-1)), kernel_size=2,
+    x = conv_block(x, n_filters=16*(2**(stage-1)), kernel_size=2,
                    strides=2, padding='valid', transpose=True)
     x = PReLU()(x)
     inpt = x     # save for residual
@@ -114,7 +114,7 @@ def up_resBlock(inpt, shortcut, stage):
     x = concatenate([shortcut, x], axis=-1)
     # conv residual
     for _ in range(min(stage, 3)):    # [4,3,2,1]
-        x = Conv_block(x, n_filters=16*(2**(stage)), kernel_size=5)
+        x = conv_block(x, n_filters=16*(2**(stage)), kernel_size=5)
     if x.shape[3] != inpt.shape[3]:
         # zeros padding to the same
         inpt = Lambda(pad)([x, inpt])
@@ -130,7 +130,7 @@ def vnet(input_size=(128,128,1),num_classes=1,stage_num=5,thresh=0.5):
     # compression
     features=[]
     for s in range(1, stage_num+1):   # [1,2,3,4,5]
-        x, feature = resBlock(x, s)
+        x, feature = comp_block(x, s)
         features.append(feature)
         # print("compression stage %d:  output:   " % s, feature)
 
