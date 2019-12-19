@@ -64,6 +64,7 @@ def crop_margin(conv, up):
     return ((int(gap1), int(gap2)), (int(gap3), int(gap4)))
 
 
+###### original model in paper ######
 def unet_original(input_size=(256,256,1), output_channels=1):
     inputs = Input(input_size)
     conv1 = Conv2D(64, 3, activation='relu', padding = 'valid', kernel_initializer = 'he_normal')(inputs)
@@ -121,12 +122,15 @@ def unet_original(input_size=(256,256,1), output_channels=1):
     return model
 
 
+##### improving model #####
 def conv_block(x, n_filters, kernel_size=3, strides=1, padding='same', activation='relu', res=False):
     inpt = x
-    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides, activation=activation)(x)
+    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides)(x)
     x = BatchNormalization()(x)
-    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides, activation=activation)(x)
+    x = Activation(activation)(x)
+    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides)(x)
     x = BatchNormalization()(x)
+    x = Activation(activation)(x)
     return Concatenate()([inpt, x]) if res else x
 
 

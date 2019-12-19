@@ -75,6 +75,7 @@ def conv_block(x, n_filters, kernel_size, strides=1, padding='same',
     else:
         x = Conv2D(n_filters, kernel_size=kernel_size, padding=padding, strides=strides,
                    activation=None, kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
     x = PReLU()(x)
 
     return x
@@ -91,7 +92,6 @@ def comp_block(inpt, stage):
     # downsampling
     if stage < 5:
         x = conv_block(feature, n_filters=16*(2**stage), kernel_size=2, strides=2)
-        x = PReLU()(x)
 
     return x, feature
 
@@ -108,7 +108,6 @@ def up_resBlock(inpt, shortcut, stage):
     x = inpt
     x = conv_block(x, n_filters=16*(2**(stage-1)), kernel_size=2,
                    strides=2, padding='valid', transpose=True)
-    x = PReLU()(x)
     inpt = x     # save for residual
     # concatenate
     x = concatenate([shortcut, x], axis=-1)

@@ -60,11 +60,26 @@
 
 ## todolist:
     settings: multi-class & multi-channel & multi-label
-    loss: reweighting & dice efficient
     data: preparation and augmentation
-    experiment
 
 ## add & concatenate:
     add操作是by element相加，要求两个输入shape完全相同，如果不同，先zero padding
     concatenate操作是在channel维度的stack，要求两个输入其他维度的shape相同，channel维度可以不同
+
+## experiment
+    就我这边颈椎X光片下颌线、上颚骨以及椎块的分割来看，同样的实验设置下，**本工程**的vnet模型test结果要略好于unet。
+    vnet学习位置信息更强，mask更完整（unet比较碎）。
+
+## batch normalization & activation
+    注意顺序：linear layer - BN layer - unlinear layer
+    e.g. conv / dense - BN - relu
+
+
+
+
+# 衍生网络
+## backboned-unet:
+    better feature extracting blocks
+    using pre-trained weights
+
 
