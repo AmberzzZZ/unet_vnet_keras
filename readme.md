@@ -81,5 +81,6 @@
 ## backboned-unet:
     better feature extracting blocks
     using pre-trained weights
+    实验目标分割背景、两条线和一个块状目标，发现对于块状目标，focal_dice的边缘分割效果好于bce_dice，对于线状目标，bce_dice在localization的方面好于focal_dice(后者会在别的地方出现假阳)，focal_dice的检出率好于bce_dice，最终决定用focal_bce_dice loss。另外focal loss和dice loss的线性叠加(之前用的是focal+log(dice))以后，loss会出现震荡，收敛效果不好，但是能观察到dice逐渐提升。
 
 
