@@ -61,6 +61,7 @@
 ## todolist:
     settings: multi-class & multi-channel & multi-label
     data: preparation and augmentation
+    1.10 added: gaussian mask for line objects and shift&flip augmentation
 
 ## add & concatenate:
     add操作是by element相加，要求两个输入shape完全相同，如果不同，先zero padding
