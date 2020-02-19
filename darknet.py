@@ -67,7 +67,7 @@ def compose(*funcs):
 if __name__ == '__main__':
 
     model = Darknet52((512, 512, 2), weights=None)
-    # model.summary()
+    model.summary()
     print(model.layers[-1].name)
     print(model.layers[152].name)
     print(model.layers[92].name)

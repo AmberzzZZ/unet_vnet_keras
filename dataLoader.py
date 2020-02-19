@@ -33,7 +33,6 @@ def trainGenerator(train_path, image_folder, mask_folder,
 
 
 # using self define function: read in npy for multi-channel mask & png for single-channel mask
-# to be added: online augmentation
 def trainGenerator2(train_path, image_folder, mask_folder, aug_dict,
                     batch_size, multi_class=False):
     filelst = os.listdir(os.path.join(train_path, image_folder))
@@ -70,6 +69,78 @@ def trainGenerator2(train_path, image_folder, mask_folder, aug_dict,
         if len(mask_batch.shape) < 4:
             mask_batch = np.expand_dims(mask_batch, axis=-1)
         yield img_batch, mask_batch
+
+
+channel_reflect = {0:255, 1:50}
+num_class = len(channel_reflect.keys())
+
+
+# generator for fine-grained-unet (mutli-inputs)
+def trainGeneratorFineGrained(train_path, image_folder, mask_folder, aug_dict,
+                              batch_size, multi_class=False):
+    filelst = os.listdir(os.path.join(train_path, image_folder))
+    idx = [i for i in range(len(filelst))]
+    while 1:
+        random.shuffle(idx)
+        full_img_batch = []
+        full_mask_batch = []
+        roi_img_batch = []
+        roi_mask_batch = []
+        for i in idx:
+            pngfile = filelst[i]
+            img = cv2.imread(os.path.join(train_path, image_folder, pngfile), 0)
+            img_tube = np.zeros((img.shape)+(1, ))
+            img_tube[..., 0] = img
+            img = img_tube
+            mask = cv2.imread(os.path.join(train_path, mask_folder, pngfile), 0)
+            if img is None or mask is None:
+                continue
+            if multi_class:
+                mask_tube = np.zeros(mask.shape+(num_class, ))
+                for j in range(num_class):
+                    mask_tube[..., j] = (mask==channel_reflect[j]).astype(np.uint8)
+            mask = mask_tube
+            if np.max(img) > 1:
+                img = img / 255.
+            if np.max(mask) > 1:
+                mask[mask>0] = 1
+            # 1st channel for full_mask
+            full_img_batch.append(img)
+            full_mask_batch.append(mask[...,0:1])
+            # 2nd channel for roi_mask
+            cropped_img, cropped_mask = crop(img, mask)
+            roi_img_batch.append(cropped_img)
+            roi_mask_batch.append(cropped_img)
+            if len(full_img_batch) == batch_size:
+                break
+
+        full_img_batch, full_mask_batch = np.array(full_img_batch), np.array(full_mask_batch)
+        roi_img_batch, roi_mask_batch = np.array(roi_img_batch), np.array(roi_mask_batch)
+        yield ((full_img_batch, full_mask_batch), (roi_img_batch, roi_mask_batch))
+
+
+def crop(img, mask):
+    bimask = (np.sum(mask, axis=-1)>0).astype(np.uint8)
+    _, contours, hierarchy = cv2.findContours(bimask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours.sort(key=cv2.contourArea, reverse=True)
+    coords = contours[0].reshape((-1,2))
+    x_min, y_min, x_max, y_max = np.min(coords[:,0]), np.min(coords[:,1]), np.max(coords[:,0]), np.max(coords[:,1])
+    x_center, y_center = (x_max + x_min) // 2, (y_max + y_min) // 2
+    halfsize = max(y_max - y_center, x_max - x_center) + 20
+
+    # img do 1st channel (only 1st channel keeping data)
+    tmpimg = img[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 0]
+    tmpimg = cv2.resize(tmpimg, (img.shape[:2]))
+    cropped_img = np.zeros_like(img)
+    cropped_img[:,:,0] = tmpimg
+    # mask do 2rd channel (tuochu mask is the roi mask)
+    tmpmask = mask[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 1]
+    tmpmask = cv2.resize(tmpmask, (mask.shape[:2]))
+    tmpmask = (tmpmask > 0).astype(np.uint8)
+    cropped_mask = np.zeros((img.shape[:2])+(1, ))
+    cropped_mask[:,:,0] = cropped_mask
+
+    return cropped_img, cropped_mask
 
 
 def height_shift(img, shift, borderType=cv2.BORDER_REFLECT):
