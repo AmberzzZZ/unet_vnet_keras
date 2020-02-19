@@ -116,7 +116,7 @@ def trainGeneratorFineGrained(train_path, image_folder, mask_folder, aug_dict,
 
         full_img_batch, full_mask_batch = np.array(full_img_batch), np.array(full_mask_batch)
         roi_img_batch, roi_mask_batch = np.array(roi_img_batch), np.array(roi_mask_batch)
-        yield ((full_img_batch, full_mask_batch), (roi_img_batch, roi_mask_batch))
+        yield [full_img_batch, roi_mask_batch, full_mask_batch, roi_mask_batch], [full_mask_batch, roi_mask_batch]
 
 
 def crop(img, mask):
