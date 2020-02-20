@@ -77,7 +77,7 @@ num_class = len(channel_reflect.keys())
 
 # generator for fine-grained-unet (mutli-inputs)
 def trainGeneratorFineGrained(train_path, image_folder, mask_folder, aug_dict,
-                              batch_size, multi_class=False):
+                              batch_size, multi_class=True):
     filelst = os.listdir(os.path.join(train_path, image_folder))
     idx = [i for i in range(len(filelst))]
     while 1:
@@ -104,10 +104,10 @@ def trainGeneratorFineGrained(train_path, image_folder, mask_folder, aug_dict,
                 img = img / 255.
             if np.max(mask) > 1:
                 mask[mask>0] = 1
-            # 1st channel for full_mask
+            # full branch for orig task: in-orig_img, out-orig_mask
             full_img_batch.append(img)
-            full_mask_batch.append(mask[...,0:1])
-            # 2nd channel for roi_mask
+            full_mask_batch.append(mask)
+            # roi branch for fine-grained task: in-cropped img, out-cropped mask for certain channel
             cropped_img, cropped_mask = crop(img, mask)
             roi_img_batch.append(cropped_img)
             roi_mask_batch.append(cropped_img)
@@ -116,7 +116,7 @@ def trainGeneratorFineGrained(train_path, image_folder, mask_folder, aug_dict,
 
         full_img_batch, full_mask_batch = np.array(full_img_batch), np.array(full_mask_batch)
         roi_img_batch, roi_mask_batch = np.array(roi_img_batch), np.array(roi_mask_batch)
-        yield [full_img_batch, roi_mask_batch, full_mask_batch, roi_mask_batch], [full_mask_batch, roi_mask_batch]
+        yield [full_img_batch, roi_mask_batch], [full_mask_batch, roi_mask_batch]
 
 
 def crop(img, mask):
@@ -128,17 +128,17 @@ def crop(img, mask):
     x_center, y_center = (x_max + x_min) // 2, (y_max + y_min) // 2
     halfsize = max(y_max - y_center, x_max - x_center) + 20
 
-    # img do 1st channel (only 1st channel keeping data)
+    # img do 1st channel (only 1st channel keeping data), keep orig channel dimension
     tmpimg = img[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 0]
     tmpimg = cv2.resize(tmpimg, (img.shape[:2]))
     cropped_img = np.zeros_like(img)
     cropped_img[:,:,0] = tmpimg
-    # mask do 2rd channel (tuochu mask is the roi mask)
+    # mask do 2rd channel (tuochu mask is the roi mask), keep the certain channel dimension
     tmpmask = mask[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 1]
     tmpmask = cv2.resize(tmpmask, (mask.shape[:2]))
     tmpmask = (tmpmask > 0).astype(np.uint8)
     cropped_mask = np.zeros((img.shape[:2])+(1, ))
-    cropped_mask[:,:,0] = cropped_mask
+    cropped_mask[:,:,0] = tmpmask
 
     return cropped_img, cropped_mask
 
@@ -203,13 +203,21 @@ if __name__ == '__main__':
     # train_generator = trainGenerator(train_path, image_folder, mask_folder, data_gen_args, batch_size, target_size)
 
     # trainGenerator2
-    train_generator = trainGenerator2(train_path, image_folder, mask_folder, data_gen_args, batch_size)
+    # train_generator = trainGenerator2(train_path, image_folder, mask_folder, data_gen_args, batch_size)
 
-    for idx, (img, mask) in enumerate(train_generator):
-        print(img.shape, np.max(img), np.min(img))
-        print(mask.shape)
+    # for idx, (img, mask) in enumerate(train_generator):
+    #     print(img.shape, np.max(img), np.min(img))
+    #     print(mask.shape)
 
-        if idx > 5:
+    #     if idx > 5:
+    #         break
+
+    # trainGeneratorFineGrained
+    train_generator = trainGeneratorFineGrained(train_path, image_folder, mask_folder, data_gen_args, batch_size)
+    for idx, batch_data in enumerate(train_generator):
+        [full_img_batch, roi_mask_batch], [full_mask_batch, roi_mask_batch] = batch_data
+        print(full_img_batch.shape)
+        if idx > 3:
             break
 
 

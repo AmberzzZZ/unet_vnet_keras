@@ -103,6 +103,7 @@ def get_backbone(backbone_name, input_shape):
     vgg16 = VGG16(include_top=False, weights=None, input_shape=input_shape, pooling=None)
     resnet50 = ResNet50(include_top=False, weights=None, input_shape=input_shape, pooling=None)
     darknet52 = Darknet52(input_shape=input_shape, weights='yolov3.h5')
+    # to be added: 'orig_unet': orig_unet, 'orig_vnet': orig_vnet
     models = {'vgg16': vgg16, 'resnet50': resnet50, 'darknet52': darknet52}
     encoder_features = {'vgg16': ('block5_conv3', 'block4_conv3', 'block3_conv3', 'block2_conv2', 'block1_conv2'),
                         'resnet50': ('activation_40', 'activation_22', 'activation_10', 'activation_1'),
