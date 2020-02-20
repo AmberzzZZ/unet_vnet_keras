@@ -130,11 +130,13 @@ def crop(img, mask):
 
     # img do 1st channel (only 1st channel keeping data), keep orig channel dimension
     tmpimg = img[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 0]
+    # tmpimg *= bimask      # mask crop
     tmpimg = cv2.resize(tmpimg, (img.shape[:2]))
     cropped_img = np.zeros_like(img)
     cropped_img[:,:,0] = tmpimg
     # mask do 2rd channel (tuochu mask is the roi mask), keep the certain channel dimension
     tmpmask = mask[y_center-halfsize:y_center+halfsize, x_center-halfsize:x_center+halfsize, 1]
+    # tmpmask *= bimask     # mask crop
     tmpmask = cv2.resize(tmpmask, (mask.shape[:2]))
     tmpmask = (tmpmask > 0).astype(np.uint8)
     cropped_mask = np.zeros((img.shape[:2])+(1, ))

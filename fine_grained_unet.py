@@ -12,7 +12,7 @@ def disc_loss(y_true, y_pred):
     beta = 100
     gamma = 0
     dice = dice_coef(y_true, y_pred)
-    bce_ = bce(y_true, y_pred)
+    bce_ = reweighting_bce(y_true, y_pred)
     border_dice = border_dice_coef(y_true, y_pred)
     return 1 - dice + alpha * bce_
 
@@ -23,7 +23,7 @@ def tuochu_loss(y_true, y_pred):
     beta = 100
     gamma = 0
     dice = dice_coef(y_true, y_pred)
-    bce_ = bce(y_true, y_pred)
+    bce_ = reweighting_bce(y_true, y_pred)
     focal = focal_loss(y_true, y_pred)
     posmask = K.greater(K.sum(K.batch_flatten(y_true), axis=1, keepdims=True), 0)
     return 1 - dice + alpha * bce_ + beta * focal * (1 + 0 * tf.cast(posmask, tf.float32))
@@ -81,7 +81,7 @@ def fine_grained_unet(backbone_name='resnet50', input_shape=(256,256,1), output_
     full_output = Conv2D(output_channels[0], kernel_size=3, padding='same', activation='sigmoid',
                     use_bias=True, kernel_initializer='glorot_uniform', name='orig_branch')(x1)
     # fine-grained branch
-    roi_output = Conv2D(output_channels[0], kernel_size=3, padding='same', activation='sigmoid',
+    roi_output = Conv2D(output_channels[1], kernel_size=3, padding='same', activation='sigmoid',
                     use_bias=True, kernel_initializer='glorot_uniform', name='roi_branch')(x2)
 
     model = Model(inputs=[full_input, roi_input], outputs=[full_output, roi_output])
@@ -91,7 +91,7 @@ def fine_grained_unet(backbone_name='resnet50', input_shape=(256,256,1), output_
     metriclst = {'orig_branch': [metric_disc_dice, metric_tuochu_dice, metric_tuochu_recall, metric_tuochu_precision],
                  'roi_branch': [metric_roi_tuochu_dice, metric_roi_tuochu_recall, metric_roi_tuochu_precision]}
     model.compile(sgd, loss={'orig_branch': orig_loss, 'roi_branch': roi_loss},
-                  loss_weights=[1, 1], metrics=metriclst)
+                  loss_weights=[1., 1.], metrics=metriclst)
 
     return model
 
