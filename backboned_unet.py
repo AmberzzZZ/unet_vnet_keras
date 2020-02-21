@@ -7,7 +7,7 @@ from keras.optimizers import SGD
 import keras.backend as K
 import tensorflow as tf
 from loss import *
-from darknet import Darknet52
+from backbones import Darknet52, OrigUnet
 
 
 ####### custom loss #######
@@ -102,12 +102,14 @@ def unet(backbone_name='resnet50', input_shape=(256,256,1), output_channels=1, s
 def get_backbone(backbone_name, input_shape):
     vgg16 = VGG16(include_top=False, weights=None, input_shape=input_shape, pooling=None)
     resnet50 = ResNet50(include_top=False, weights=None, input_shape=input_shape, pooling=None)
-    darknet52 = Darknet52(input_shape=input_shape, weights='yolov3.h5')
+    darknet52 = Darknet52(input_shape=input_shape, weights=None)
+    orig_unet = OrigUnet(input_shape=input_shape)
     # to be added: 'orig_unet': orig_unet, 'orig_vnet': orig_vnet
-    models = {'vgg16': vgg16, 'resnet50': resnet50, 'darknet52': darknet52}
+    models = {'vgg16': vgg16, 'resnet50': resnet50, 'darknet52': darknet52, 'orig_unet': orig_unet}
     encoder_features = {'vgg16': ('block5_conv3', 'block4_conv3', 'block3_conv3', 'block2_conv2', 'block1_conv2'),
                         'resnet50': ('activation_40', 'activation_22', 'activation_10', 'activation_1'),
-                        'darknet52': ('add_35', 'add_27', 'add_19', 'add_17')}
+                        'darknet52': ('add_35', 'add_27', 'add_19', 'add_17'),
+                        'orig_unet': ('activation_57', 'activation_55', 'activation_53', 'activation_51')}
     return models[backbone_name], encoder_features[backbone_name]
 
 
@@ -153,7 +155,7 @@ def decoder_block_deconv(x, shortcut, n_filters):
 
 
 if __name__ == '__main__':
-    model = unet('darknet52', input_shape=(192,192,3), output_channels=2, stage=5)
+    model = unet('orig_unet', input_shape=(192,192,3), output_channels=2, stage=5)
     # model = unet('vgg16', input_shape=(256,256,3), output_channels=1, stage=5)
     model.summary()
 

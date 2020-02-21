@@ -1,22 +1,24 @@
 from keras.models import Model
-from keras.layers import Input, Conv2D, Add, ZeroPadding2D
+from keras.layers import Input, Conv2D, Add, ZeroPadding2D, MaxPool2D, Activation, Concatenate
 from keras.regularizers import l2
 from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from functools import wraps, reduce
 
 
-def Darknet52(input_shape, weights=None):
+####### darknet52 ##########
+def Darknet52(input_tensor=None, input_shape=(256,256,1), weights=None):
 
-    inpt = Input(input_shape)
-    x = DarknetConv2D_BN_Leaky(32, (3,3))(inpt)
+    if input_tensor is None:
+        input_tensor = Input(input_shape)
+    x = DarknetConv2D_BN_Leaky(32, (3,3))(input_tensor)
     x = resblock_body(x, 64, 1)
     x = resblock_body(x, 128, 2)
     x = resblock_body(x, 256, 8)
     x = resblock_body(x, 512, 8)
     x = resblock_body(x, 1024, 4)
 
-    model = Model(inpt, x)
+    model = Model(input_tensor, x)
     return model
 
 
@@ -64,14 +66,54 @@ def compose(*funcs):
         raise ValueError('Composition of empty sequence not supported.')
 
 
+####### origin_unet ##########
+def OrigUnet(input_tensor=None, input_shape=(256,256,1), stage=5):
+
+    if input_tensor is None:
+        input_tensor = Input(input_shape)
+
+    # compression
+    x = input_tensor
+    for i in range(stage):    # [0,1,2,3,4]
+        x, feature = comp_block(x, i)
+        # print(feature)
+
+    model = Model(input_tensor, x)
+
+    return model
+
+
+def comp_block(x, stage, res=False):   # [0,1,2,3,4]
+    x = conv_block(x, 64*(2**stage))
+    feature = x
+    if stage < 4:
+        x = MaxPool2D()(x)
+    return x, feature
+
+
+def conv_block(x, n_filters, kernel_size=3, strides=1, padding='same', activation='relu', res=False):
+    inpt = x
+    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides)(x)
+    x = BatchNormalization()(x)
+    x = Activation(activation)(x)
+    x = Conv2D(n_filters, kernel_size, padding=padding, strides=strides)(x)
+    x = BatchNormalization()(x)
+    x = Activation(activation)(x)
+    return Concatenate()([inpt, x]) if res else x
+
+
 if __name__ == '__main__':
 
-    model = Darknet52((512, 512, 2), weights=None)
+    # model = Darknet52(input_tensor=Input((512, 512, 2)))
+    # model = Darknet52(input_shape=(128, 128, 2))
+    # print(model.layers[-1].name)
+    # print(model.layers[152].name)
+    # print(model.layers[92].name)
+    # print(len(model.layers))          # 185
+
+    model = OrigUnet(input_tensor=Input((512, 512, 2)))
     model.summary()
-    print(model.layers[-1].name)
-    print(model.layers[152].name)
-    print(model.layers[92].name)
-    print(len(model.layers))          # 185
+
 
 
 
