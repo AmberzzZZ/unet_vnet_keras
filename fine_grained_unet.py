@@ -48,20 +48,24 @@ def metric_roi_tuochu_dice(y_true, y_pred):
 
 
 def metric_tuochu_recall(y_true, y_pred):
-    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true[...,1]), axis=-1), 0), tf.int8)  # N*1
-    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_pred[...,1]), axis=-1), 0), tf.int8)
+    y_true = y_true[..., 1]
+    y_pred = y_pred[..., 1]
+    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true), axis=-1), 0), tf.int8)  # N*1
+    y_1 = tf.ones_like(y_pred)
+    y_0 = tf.ones_like(y_pred)
+    y_bp = tf.where(tf.greater(y_pred, 0.3), y_1, y_0)
+    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_bp), axis=-1), 100), tf.int8)
     return K.sum(y_t * y_p) / K.sum(y_t)
+
+
 def metric_tuochu_precision(y_true, y_pred):
-    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true[...,1]), axis=-1), 0), tf.int8)
-    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_pred[...,1]), axis=-1), 0), tf.int8)
-    return K.sum(y_t * y_p) / K.sum(y_p)
-def metric_roi_tuochu_recall(y_true, y_pred):
-    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true), axis=-1), 0), tf.int8)
-    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_pred), axis=-1), 0), tf.int8)
-    return K.sum(y_t * y_p) / K.sum(y_t)
-def metric_roi_tuochu_precision(y_true, y_pred):
-    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true), axis=-1), 0), tf.int8)
-    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_pred), axis=-1), 0), tf.int8)
+    y_true = y_true[..., 1]
+    y_pred = y_pred[..., 1]
+    y_t = K.cast(K.greater(K.sum(K.batch_flatten(y_true), axis=-1), 0), tf.int8)  # N*1
+    y_1 = tf.ones_like(y_pred)
+    y_0 = tf.ones_like(y_pred)
+    y_bp = tf.where(tf.greater(y_pred, 0.3), y_1, y_0)
+    y_p = K.cast(K.greater(K.sum(K.batch_flatten(y_bp), axis=-1), 100), tf.int8)
     return K.sum(y_t * y_p) / K.sum(y_p)
 
 
