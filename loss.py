@@ -1,5 +1,6 @@
 import keras.backend as K
 import tensorflow as tf
+import numpy as np
 
 
 def dice_coef(y_true, y_pred):
@@ -98,5 +99,20 @@ def precision(y_true, y_pred):
     predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
     precision = true_positives / (predicted_positives + K.epsilon())
     return precision
+
+
+def bilinear(shape, dtype='float32'):
+    in_channels, out_channels, kernel_size, kernel_size = shape
+    factor = (kernel_size + 1) // 2
+    if kernel_size % 2 == 1:
+        center = factor - 1
+    else:
+        center = factor - 0.5
+    og = np.ogrid[:kernel_size, :kernel_size]
+    filt = (1 - abs(og[0] - center) / factor) * (1 - abs(og[1] - center) / factor)
+    weight = np.zeros(shape, dtype=dtype)
+    weight[range(in_channels), range(out_channels), :, :] = filt
+    return np.array(weight)
+
 
 

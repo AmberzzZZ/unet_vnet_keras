@@ -1,9 +1,10 @@
-from keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Activation, UpSampling2D, \
-                         Conv2DTranspose, add, concatenate, AveragePooling2D
+from keras.layers import Conv2D, Conv2DTranspose, Lambda, add
 from keras.models import Model
-from keras.optimizers import SGD
+from keras.optimizers import Adam
 from loss import *
-from backbones import get_backbone
+from backboned_unet import *
+import tensorflow as tf
+import os
 
 
 ####### custom loss #######
@@ -53,22 +54,24 @@ def metric_dice_4(y_true, y_pred):
 
 
 ####### custom model #######
-def unet(backbone_name='resnet50', input_shape=(256,256,1), output_channels=1, stage=5):
+def unet(backbone_name='orig_unet', input_shape=(256,256,1), output_channels=1, stage=5,
+         lr=3e-4, decay=5e-4, freeze=False, weight_pt=''):
     # backboned encoder
     backbone, encoder_features = get_backbone(backbone_name, input_shape)
     inpt = backbone.input
-    x = backbone.output
 
     # remove average pooling layer at the end of backbone (for resnet models of certain version of keras)
     if isinstance(backbone.layers[-1], AveragePooling2D):
         x = backbone.get_layer(index=-2).output
+    else:
+        x = backbone.output
 
     # add center block if previous operation was maxpooling (for vgg models)
     if isinstance(backbone.layers[-1], MaxPooling2D):
         x = Conv3x3BnReLU(x, 512)
         x = Conv3x3BnReLU(x, 512)
 
-    # extract skip connections
+     # extract skip connections
     skips = ([backbone.get_layer(name=i).output if isinstance(i, str)
               else backbone.get_layer(index=i).output for i in encoder_features])
 
@@ -83,56 +86,38 @@ def unet(backbone_name='resnet50', input_shape=(256,256,1), output_channels=1, s
         x = decoder_block_deconv(x, skip, decoder_filters[i])
 
     # model head
-    x = Conv2D(output_channels, kernel_size=3, padding='same', activation='sigmoid')(x)
+    x = Conv2D(output_channels, kernel_size=3, padding='same')(x)
+    orig_model = Model(inpt, x)
+
+    # add level2 branch
+    level2 = orig_model.get_layer('activation_68').output
+    level2 = Conv2D(1, 1, kernel_initializer='zeros')(level2)
+    level2 = Conv2DTranspose(1, 8, strides=4, padding='same', kernel_initializer=bilinear)(level2)
+
+    # fuse and out
+    x = Lambda(element_add)([x, level2])
+    x = Activation('sigmoid')(x)
 
     model = Model(inpt, x)
+    if os.path.exists(weight_pt):
+        print("load weight: ", weight_pt)
+        model.load_weights(weight_pt, by_name=True, skip_mismatch=True)
+    if freeze:
+        for i in range(68):
+            model.layers[i].trainable = False
+        print("freeze the first 68 layers before level2")
 
-    sgd = SGD(lr=1e-4, momentum=0.97, decay=1e-6, nesterov=True)
+    adam = Adam(lr, decay)
     # metric_lst = [metric_dice_1, metric_dice_2, metric_dice_3, metric_dice_4] + [dice_loss, bg_loss, line_loss, cspine_loss]
-    model.compile(sgd, loss=test_loss, metrics=[metric_dice_1])
+    model.compile(adam, loss=test_loss, metrics=[metric_dice_1])
 
     return model
 
 
-def Conv3x3BnReLU(x, n_filters, padding='same', strides=1, activation='relu'):
-    x = Conv2D(n_filters, kernel_size=3, padding=padding, strides=strides)(x)
-    x = BatchNormalization()(x)
-    x = Activation(activation)(x)
-    return x
-
-
-def Conv1x1BnReLU(x, n_filters, padding='same', strides=1, activation='relu'):
-    x = Conv2D(n_filters, kernel_size=1, padding=padding, strides=strides)(x)
-    x = BatchNormalization()(x)
-    x = Activation(activation)(x)
-    return x
-
-
-def decoder_block_up(x, shortcut, n_filters):
-    # upsampling
-    input_filters = x.shape.as_list()[-1]
-    output_filters = shortcut.shape.as_list()[-1] if shortcut is not None else n_filters
-    x = Conv1x1BnReLU(x, input_filters//4, padding='same', strides=1, activation='relu')
-    x = UpSampling2D()(x)
-    x = Conv3x3BnReLU(x, input_filters//4, padding='same', strides=1, activation='relu')
-    x = Conv1x1BnReLU(x, output_filters, padding='same', strides=1, activation='relu')
-    # add or concatenate
-    if shortcut is not None:
-        x = add([x, shortcut])
-    return x
-
-
-def decoder_block_deconv(x, shortcut, n_filters):
-    # convTranspose
-    input_filters = x.shape.as_list()[-1]
-    output_filters = shortcut.shape.as_list()[-1] if shortcut is not None else n_filters
-    x = Conv1x1BnReLU(x, input_filters//4, padding='same', strides=1, activation='relu')
-    x = Conv2DTranspose(input_filters//4, kernel_size=4, padding='same', strides=2)(x)
-    x = Conv1x1BnReLU(x, output_filters, padding='same', strides=1, activation='relu')
-    # add or concatenate
-    if shortcut is not None:
-        x = add([x, shortcut])
-    return x
+def element_add(args):
+    x, level2 = args
+    level2 = tf.pad(level2, [[0,0], [0,0], [0,0], [1,2]])
+    return add([x, level2])
 
 
 if __name__ == '__main__':

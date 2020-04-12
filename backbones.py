@@ -4,6 +4,22 @@ from keras.regularizers import l2
 from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from functools import wraps, reduce
+from keras.applications.vgg16 import VGG16
+from keras.applications.resnet50 import ResNet50
+
+
+def get_backbone(backbone_name, input_shape):
+    orig_unet = OrigUnet(input_shape=input_shape)
+    darknet52 = Darknet52(input_shape=input_shape, weights=None)
+    resnet50 = ResNet50(include_top=False, weights=None, input_shape=input_shape, pooling=None)
+    vgg16 = VGG16(include_top=False, weights=None, input_shape=input_shape, pooling=None)
+    # to be added: 'orig_unet': orig_unet, 'orig_vnet': orig_vnet
+    models = {'vgg16': vgg16, 'resnet50': resnet50, 'darknet52': darknet52, 'orig_unet': orig_unet}
+    encoder_features = {'orig_unet': ('activation_10', 'activation_8', 'activation_6', 'activation_4', 'activation_2'),
+                        'darknet52': ('add_19', 'add_11', 'add_3', 'add_1'),
+                        'resnet50': ('activation_50', 'activation_32', 'activation_20', 'activation_11'),
+                        'vgg16': ('block5_conv3', 'block4_conv3', 'block3_conv3', 'block2_conv2', 'block1_conv2')}
+    return models[backbone_name], encoder_features[backbone_name]
 
 
 ####### darknet52 ##########
@@ -86,8 +102,7 @@ def OrigUnet(input_tensor=None, input_shape=(256,256,1), stage=5):
 def comp_block(x, stage, res=False):   # [0,1,2,3,4]
     x = conv_block(x, 64*(2**stage))
     feature = x
-    if stage < 4:
-        x = MaxPool2D()(x)
+    x = MaxPool2D()(x)
     return x, feature
 
 
@@ -111,7 +126,7 @@ if __name__ == '__main__':
     # print(model.layers[92].name)
     # print(len(model.layers))          # 185
 
-    model = OrigUnet(input_tensor=Input((512, 512, 2)))
+    model, _ = get_backbone('orig_unet', ((512,512,2)))
     model.summary()
 
 

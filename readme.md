@@ -94,6 +94,12 @@
     3. loss: 新任务loss测试下来dice<dice+bce<dice+reweighting_bce<dice+reweighting_bce+focal
         总之就是加权的bce太牛逼了
 
+## branch2-unet:
+    multi-channel的输出，custom的loss，很可能使得网络在特征筛选的阶段对某个／几个任务有倾向性。
+    我们无法量化这种影响，但是可以通过特征图heatmap看到这种倾向，
+    一个解决的方案是，比如观察到某个通道的任务，在level2上特征响应很强，在后面几层没了，
+    那么我们就直接在这一层，对这个任务做特征筛选，然后上采样，叠加到原来的输出上。
+
 
 
 
