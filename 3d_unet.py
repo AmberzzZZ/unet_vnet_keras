@@ -5,6 +5,27 @@ from keras.models import Model
 from loss import *
 
 
+###### custom loss ######
+def weighted_dice_loss(y_true, y_pred):
+    pos_mask = y_true
+    neg_mask = 1 - y_true
+    dice_p = dice_loss(y_true*pos_mask, y_pred*pos_mask)
+    dice_n = dice_loss(y_true*neg_mask, y_pred*neg_mask)
+    return dice_p*0.8 + dice_n*0.2
+
+
+def mixed_loss(y_true, y_pred):
+    # weighted dice loss
+    dice = weighted_dice_loss(y_true, y_pred)
+    # bce
+    bce = reweighting_bce(y_true, y_pred)
+    return dice + bce
+
+
+###### custom metric ######
+metric_lst = [weighted_dice_loss, reweighting_bce]
+
+
 def unet_3d(input_shape, n_labels=1, lr=1e-5, depth=4, n_base_filters=32, bn=False, deconv=False):
     inpt = Input(input_shape)
     x = inpt
@@ -58,7 +79,7 @@ def up_conv(input, n_filters, pool_size=2, kernel_size=2, strides=2, deconvoluti
 
 if __name__ == '__main__':
 
-    model = unet_3d((128,128,128,3), n_labels=4, lr=1e-5, bn=True, deconv=True)
+    model = unet_3d((128,128,128,1), n_labels=1, lr=1e-5, bn=True, deconv=True)
     model.summary()
 
 

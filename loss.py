@@ -6,6 +6,7 @@ import numpy as np
 def dice_coef(y_true, y_pred):
     smooth = 1.
     y_true_f = K.flatten(y_true)
+    y_pred = tf.where(y_pred>0.3, tf.ones_like(y_pred), tf.zeros_like(y_pred))
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f))
