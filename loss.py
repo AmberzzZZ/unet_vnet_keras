@@ -12,7 +12,17 @@ def dice_coef(y_true, y_pred):
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f))
 
 
-def dice_n(y_true, y_pred, channel):
+def dice_p(y_true, y_pred):
+    pos_mask = y_true
+    return dice_coef(y_true*pos_mask, y_pred*pos_mask)
+
+
+def dice_n(y_true, y_pred):
+    neg_mask = 1 - y_true
+    return dice_coef((1-y_true)*neg_mask, (1-y_pred)*neg_mask)
+
+
+def dice_k(y_true, y_pred, channel):
     y_t = y_true[..., channel]
     y_p = y_pred[..., channel]
     return dice_coef(y_t, y_p)
