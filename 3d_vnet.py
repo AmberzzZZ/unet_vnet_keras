@@ -1,5 +1,4 @@
-from keras.layers import Input, MaxPooling3D, Conv3D, BatchNormalization,  \
-                          Deconvolution3D, UpSampling3D, concatenate, PReLU, add, Lambda
+from keras.layers import Input, Conv3D, BatchNormalization, Deconvolution3D, concatenate, PReLU, add, Lambda, LeakyReLU, ReLU
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from keras.optimizers import Adam
 from keras.models import Model
@@ -50,11 +49,9 @@ def vnet_3d(input_shape, n_classes=2, n_base_filters=16, depth=5, bn=True, decon
         if deconv:
             x = Deconvolution3D(n_base_filters*(2**i), kernel_size=2, strides=2)(x)
         else:
-            x = UpSampling3D(size=2)(x)
+            x = Lambda(resize_trilinear, arguments={'factors':(2,2,2)})(x)
             x = Conv3D(n_base_filters*(2**i), kernel_size=1, strides=1)(x)
         # concatenate
-        print(x)
-        print(shortcuts[i])
         x = concatenate([x,shortcuts[i]], axis=-1)
         # resconv block
         x = conv_block(x, n_filters=n_base_filters*(2**i)*2, depth=i, batch_normalization=bn)
@@ -77,7 +74,7 @@ def conv_block(inpt, n_filters, depth, batch_normalization=True):
             x = BatchNormalization()(x)
         else:
             x = InstanceNormalization()(x)
-        x = PReLU()(x)
+        x = LeakyReLU()(x)
     x = Lambda(element_add)([x, inpt])
     return x
 
@@ -92,9 +89,30 @@ def element_add(args):
     return add([x, inpt])
 
 
+def resize_trilinear(inputs, factors):
+    num_batches, depth, height, width, num_channels = inputs._keras_shape
+    dtype = inputs.dtype
+    output_depth, output_height, output_width = [int(s * f) for s, f in zip([depth, height, width], factors)]
+
+    # resize y-z
+    squeeze_b_x = tf.reshape(inputs, [-1, height, width, num_channels])
+    resize_b_x = tf.cast(tf.image.resize_bilinear(squeeze_b_x, [output_height, output_width], align_corners=True, half_pixel_centers=True), dtype=dtype)
+    resume_b_x = tf.reshape(resize_b_x, [-1, depth, output_height, output_width, num_channels])
+
+    # resize x
+    reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
+    squeeze_b_z = tf.reshape(reoriented, [-1, output_height, depth, num_channels])
+    resize_b_z = tf.cast(tf.image.resize_bilinear(squeeze_b_z, [output_height, output_depth], align_corners=True, half_pixel_centers=True), dtype=dtype)
+    resume_b_z = tf.reshape(resize_b_z, [-1, output_width, output_height, output_depth, num_channels])
+
+    # reorient back
+    output = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
+    return output
+
+
 if __name__ == '__main__':
 
-    model = vnet_3d((128,128,128,1), n_classes=1, depth=4, bn=True, deconv=False)
+    model = vnet_3d((128,128,128,1), n_classes=1, depth=5, bn=True, deconv=False)
     model.summary()
 
 

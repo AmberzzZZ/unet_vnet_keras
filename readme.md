@@ -73,6 +73,13 @@
     注意顺序：linear layer - BN layer - unlinear layer
     e.g. conv / dense - BN - relu
 
+## 激活函数:
+    PReLU会显著增加参数量
+
+## kernel size:
+    3x3替换5x5参数量会显著减少
+    orig_unet(3x3), orig_vnet(5x5)
+
 
 # 衍生网络
 ## backboned-unet:
@@ -98,12 +105,16 @@
     一个解决的方案是，比如观察到某个通道的任务，在level2上特征响应很强，在后面几层没了，
     那么我们就直接在这一层，对这个任务做特征筛选，然后上采样，叠加到原来的输出上。
 
-## 3d-unet
+## 3d-unet:
     3D版本的unet，conv_block的第二个conv做了double channel
 
-## 3d-vnet
+## 3d-vnet:
     真正的vnet论文实现
     depth=5, residual use element-sum, shortcut use concate
+    5x5 conv kernel
+
+## 3d-vnet-atrous:
+    用空洞卷积替换Max Pooling
 
 
 
