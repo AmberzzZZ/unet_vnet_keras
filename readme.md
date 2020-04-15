@@ -40,15 +40,13 @@
     https://amberzzzz.github.io/2019/12/05/unet-vnet/
 
 
-
-
 # vnet
 ## model
     按照原论文中的结构和维度来实现，3D换成2D，不关注原图的第三维
-    residual: element-wise sum
+    residual: element-wise sum，前者channel数肯定多于后者，add之前先做zeropadding
     unlinearity: PReLU，最后输出的部分有点没看懂，
-    decompression: 解码的residual，一边concatenate了feature map，一边直接作为shortcut，前者channel数肯定多于后者，add之前先做zeropadding
-    output Layer: 最后一层的图有点问题，看图是1*1 conv后面有个PReLU，然后再接一个softmax？？？
+    shortcut: concatenate了compression path的feature map，
+    output Layer: 1*1 conv+PReLU，output channel，softmax
 
 ## 相比较于unet:
     residual
@@ -99,6 +97,13 @@
     我们无法量化这种影响，但是可以通过特征图heatmap看到这种倾向，
     一个解决的方案是，比如观察到某个通道的任务，在level2上特征响应很强，在后面几层没了，
     那么我们就直接在这一层，对这个任务做特征筛选，然后上采样，叠加到原来的输出上。
+
+## 3d-unet
+    3D版本的unet，conv_block的第二个conv做了double channel
+
+## 3d-vnet
+    真正的vnet论文实现
+    depth=5, residual use element-sum, shortcut use concate
 
 
 

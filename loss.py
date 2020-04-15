@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 
+######## losses ######
 def dice_coef(y_true, y_pred):
     smooth = 1.
     y_true_f = K.flatten(y_true)
@@ -98,6 +99,7 @@ def border_dice_n(y_true, y_pred, channel):
     return border_dice_coef(y_t, y_p)
 
 
+######## metrics ######
 def recall(y_true, y_pred):
     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
     possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
@@ -112,6 +114,7 @@ def precision(y_true, y_pred):
     return precision
 
 
+######### initial_kernel ########
 def bilinear(shape, dtype='float32'):
     in_channels, out_channels, kernel_size, kernel_size = shape
     factor = (kernel_size + 1) // 2
@@ -124,6 +127,76 @@ def bilinear(shape, dtype='float32'):
     weight = np.zeros(shape, dtype=dtype)
     weight[range(in_channels), range(out_channels), :, :] = filt
     return np.array(weight)
+
+
+####### functions ########
+def resize_trilinear(inputs, factors=None, output_size=None):
+    num_batches, [depth, height, width], num_channels = inputs._keras_shape
+    dtype = inputs.dtype
+    if output_size is None:
+        output_depth, output_height, output_width = [int(s * f) for s, f in zip([depth, height, width], factors)]
+    else:
+        output_depth, output_height, output_width = output_size
+    # resize y-z
+    squeeze_b_x = tf.reshape(inputs, [-1, height, width, num_channels])
+    resize_b_x = tf.cast(tf.image.resize_bilinear(squeeze_b_x, [output_height, output_width], align_corners=False, half_pixel_centers=True), dtype=dtype)
+    resume_b_x = tf.reshape(resize_b_x, [num_batches, depth, output_height, output_width, num_channels])
+
+    # resize x
+    reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
+    squeeze_b_z = tf.reshape(reoriented, [-1, output_height, depth, num_channels])
+    resize_b_z = tf.cast(tf.image.resize_bilinear(squeeze_b_z, [output_height, output_depth], align_corners=False, half_pixel_centers=True), dtype=dtype)
+    resume_b_z = tf.reshape(resize_b_z, [num_batches, output_width, output_height, output_depth, num_channels])
+
+    # reorient back
+    output = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
+    return output
+
+
+def resize_tricubic(inputs, factors=None, output_size=None):
+    num_batches, [depth, height, width], num_channels = inputs._keras_shape
+    dtype = inputs.dtype
+    if output_size is None:
+        output_depth, output_height, output_width = [int(s * f) for s, f in zip([depth, height, width], factors)]
+    else:
+        output_depth, output_height, output_width = output_size
+
+    # resize y-z
+    squeeze_b_x = tf.reshape(inputs, [-1, height, width, num_channels])
+    resize_b_x = tf.cast(tf.image.resize_bicubic(squeeze_b_x, [output_height, output_width], align_corners=False, half_pixel_centers=True), dtype=dtype)
+    resume_b_x = tf.reshape(resize_b_x, [num_batches, depth, output_height, output_width, num_channels])
+
+    # resize x
+    reoriented = tf.transpose(resume_b_x, [0, 3, 2, 1, 4])
+    squeeze_b_z = tf.reshape(reoriented, [-1, output_height, depth, num_channels])
+    resize_b_z = tf.cast(tf.image.resize_bicubic(squeeze_b_z, [output_height, output_depth], align_corners=False, half_pixel_centers=True), dtype=dtype)
+    resume_b_z = tf.reshape(resize_b_z, [num_batches, output_width, output_height, output_depth, num_channels])
+
+    # reorient back
+    output = tf.transpose(resume_b_z, [0, 3, 2, 1, 4])
+    return output
+
+
+def resize_bilinear(inputs, output_size=None, factors=None):
+    num_batches, [height, width], num_channels = inputs._keras_shape
+    dtype = inputs.dtype
+    if output_size is None:
+        output_size = [int(s * f) for s, f in zip([height, width], factors)]
+    outputs = tf.cast(tf.image.resize_bilinear(inputs, output_size, align_corners=False, half_pixel_centers=True), dtype=dtype)
+    return outputs
+
+
+def resize_bicubic(inputs, output_size=None, factors=None, name=None, data_format='channels_first'):
+    num_batches, [height, width], num_channels = inputs._keras_shape
+    dtype = inputs.dtype
+    if output_size is None:
+        output_size = [int(s * f) for s, f in zip([height, width], factors)]
+    outputs = tf.cast(tf.image.resize_bicubic(inputs_channels_last, output_size, align_corners=False, half_pixel_centers=True), dtype=dtype)
+    return outputs
+
+
+
+
 
 
 
