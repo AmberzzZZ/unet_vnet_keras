@@ -1,5 +1,6 @@
 from keras.layers import Input, MaxPooling3D, Conv3D, BatchNormalization, Activation,  \
                           Deconvolution3D, UpSampling3D, concatenate
+from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from keras.optimizers import Adam
 from keras.models import Model
 from loss import *
@@ -59,14 +60,9 @@ def conv_block(input, n_filters, kernel_size=3, activation='relu', padding='same
                 batch_normalization=False, instance_normalization=False):
     x = Conv3D(n_filters, kernel_size, padding=padding, strides=strides)(input)
     if batch_normalization:
-        x = BatchNormalization(axis=1)(x)
+        x = BatchNormalization()(x)
     elif instance_normalization:
-        try:
-            from keras_contrib.layers.normalization import InstanceNormalization
-        except ImportError:
-            raise ImportError("Install keras_contrib in order to use instance normalization."
-                              "\nTry: pip install git+https://www.github.com/farizrahman4u/keras-contrib.git")
-        x = InstanceNormalization(axis=1)(x)
+        x = InstanceNormalization()(x)
     return Activation(activation)(x)
 
 
