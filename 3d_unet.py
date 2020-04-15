@@ -63,7 +63,8 @@ def conv_block(input, n_filters, kernel_size=3, activation='relu', padding='same
         x = BatchNormalization()(x)
     elif instance_normalization:
         x = InstanceNormalization()(x)
-    return Activation(activation)(x)
+    x = Activation(activation)(x)
+    return x
 
 
 def up_conv(input, n_filters, pool_size=2, kernel_size=2, strides=2, deconvolution=False):
