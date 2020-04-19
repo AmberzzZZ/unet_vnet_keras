@@ -113,8 +113,13 @@
     depth=5, residual use element-sum, shortcut use concate
     5x5 conv kernel
 
-## 3d-vnet-atrous:
-    用空洞卷积替换Max Pooling
+## 3d-vnet-depthwise:
+    用可分离卷积替换标准卷积，用stride2 conv替换Max pooling
+    参数量：depth=5 kernel_size=3
+    3d-vnet: 14,324,241      3d-vnet-depthwise: 487,601     差了一个数量级
+    zeropadding in conv_block: keras的mobineNet源码里面，在实现depthwise block的时候，先做了zeropadding，再做了valid conv
+    直接same pad也work，主要影响在模型转换(https://github.com/starhiking/Document/blob/master/Deep_Learning/Note/Pad_Difference.md)
+
 
 
 

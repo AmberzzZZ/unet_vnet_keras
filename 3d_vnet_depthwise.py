@@ -1,51 +1,30 @@
-from keras.layers import Input, Conv3D, BatchNormalization, Deconvolution3D, concatenate, PReLU, add, Lambda, LeakyReLU, ReLU
+from keras.layers import Input, Conv3D, BatchNormalization, Deconvolution3D, concatenate, add, Lambda, LeakyReLU, ZeroPadding3D
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 from keras.optimizers import Adam
 from keras.models import Model
 from loss import *
 import tensorflow as tf
-
-
-###### custom loss ######
-def weighted_dice_loss(y_true, y_pred):
-    pos_mask = y_true
-    neg_mask = 1 - y_true
-    dice_p = dice_loss(y_true*pos_mask, y_pred*pos_mask)
-    dice_n = dice_loss(y_true*neg_mask, y_pred*neg_mask)
-    return dice_p*0.8 + dice_n*0.2
-
-
-def mixed_loss(y_true, y_pred):
-    # weighted dice loss
-    dice = weighted_dice_loss(y_true, y_pred)
-    # bce
-    bce = reweighting_bce(y_true, y_pred)
-    return dice + bce
-
-
-###### custom metric ######
-metric_lst = [weighted_dice_loss, reweighting_bce]
+from DepthwiseConv3D import DepthwiseConv3D
 
 
 ###### model ######
-def vnet_3d(input_shape, n_classes=2, n_base_filters=16, kernel_size=5, depth=5, bn=True, deconv=True,
-            lr=1e-5, decay=5e-4):
+def vnet_3d_depthwise(input_shape, n_classes=2, n_base_filters=16, depth=5, kernel_size=5, bn=True, deconv=False,
+                      lr=1e-5):
     inpt = Input(input_shape)
-    x = inpt
 
-    shortcuts = []
+    x = Conv3D(n_base_filters, 3, strides=1, padding='same')(inpt)
+    shortcuts = [x]
     # encoder
-    for i in range(depth):   # [0,1,2,3,4]
+    for i in range(depth-1):   # [0,1,2,3]
+        # down conv
+        x = Conv3D(n_base_filters*(2**i)*2, kernel_size=2, strides=2)(x)
         # resconv block
         x = conv_block(x, n_filters=n_base_filters*(2**i), kernel_size=kernel_size, depth=i, batch_normalization=bn)
         shortcuts.append(x)
-        # down conv
-        if i < depth-1:
-            x = Conv3D(n_base_filters*(2**i)*2, kernel_size=2, strides=2)(x)
 
     # decoder
     for i in range(depth-2, -1, -1):     # [3,2,1,0]
-        # up conv
+        # up samp
         if deconv:
             x = Deconvolution3D(n_base_filters*(2**i), kernel_size=2, strides=2)(x)
         else:
@@ -69,12 +48,14 @@ def conv_block(inpt, n_filters, kernel_size, depth, batch_normalization=True):
     n_blocks = min(depth+1, 3)
     x = inpt
     for i in range(n_blocks):
-        x = Conv3D(n_filters, kernel_size, strides=1, padding='same')(x)
+        x = ZeroPadding3D(padding=(1, 1, 1))(x)
+        x = DepthwiseConv3D(kernel_size, depth_multiplier=1, padding='valid')(x)
         if batch_normalization:
             x = BatchNormalization()(x)
         else:
             x = InstanceNormalization()(x)
         x = LeakyReLU()(x)
+    # residual
     x = Lambda(element_add)([x, inpt])
     return x
 
@@ -112,9 +93,8 @@ def resize_trilinear(inputs, factors):
 
 if __name__ == '__main__':
 
-    model = vnet_3d((128,128,128,1), n_classes=1, kernel_size=3, depth=5, bn=True, deconv=False)
+    model = vnet_3d_depthwise((128,128,128,1), n_classes=1, depth=5, kernel_size=3, bn=True, deconv=False)
     model.summary()
-
 
 
 
