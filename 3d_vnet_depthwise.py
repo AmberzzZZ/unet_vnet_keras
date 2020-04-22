@@ -55,6 +55,12 @@ def conv_block(inpt, n_filters, kernel_size, depth, batch_normalization=True):
         else:
             x = InstanceNormalization()(x)
         x = LeakyReLU()(x)
+        x = Conv3D(n_filters, 1, strides=1, padding='same')(x)
+        if batch_normalization:
+            x = BatchNormalization()(x)
+        else:
+            x = InstanceNormalization()(x)
+        x = LeakyReLU()(x)
     # residual
     x = Lambda(element_add)([x, inpt])
     return x
