@@ -80,12 +80,19 @@
     3x3替换5x5参数量会显著减少
     orig_unet(3x3), orig_vnet(5x5)
 
+## loss
+    实验目标分割背景、两条线和一个块状目标，
+    发现对于块状目标，focal_dice的边缘分割效果好于bce_dice，
+    对于线状目标，bce_dice在localization的方面好于focal_dice(后者会在别的地方出现假阳)，focal_dice的检出率好于bce_dice，最终决定用focal_bce_dice loss。
+    另外focal loss和dice loss的线性叠加(之前用的是focal+log(dice))以后，loss会出现震荡，收敛效果不好，但是能观察到dice逐渐提升。
+
 
 # 衍生网络
 ## backboned-unet:
     1. better feature extracting blocks
     2. using pre-trained backbone & weights: 不同的keras版本下，resnet backbone不一样，summary发现差别在最后有没有接一个avg_pool
-    3. 实验目标分割背景、两条线和一个块状目标，发现对于块状目标，focal_dice的边缘分割效果好于bce_dice，对于线状目标，bce_dice在localization的方面好于focal_dice(后者会在别的地方出现假阳)，focal_dice的检出率好于bce_dice，最终决定用focal_bce_dice loss。另外focal loss和dice loss的线性叠加(之前用的是focal+log(dice))以后，loss会出现震荡，收敛效果不好，但是能观察到dice逐渐提升。
+    3. 不要随随便便搬过来一个网络结构替换原有的backbone，如resnet50，因为resnet是为了分类任务设计，大感受野这种性质在分割任务中没好处
+    4. 但是可以尝试替换局部的block（引入多尺度&减少参数）
 
 ## fine-grained-unet:
     1. 考虑到一些细粒度的instance，在roi内分割效果更好，而我们恰好能够提供ROI。
