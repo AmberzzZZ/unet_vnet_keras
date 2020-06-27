@@ -93,6 +93,7 @@
     2. using pre-trained backbone & weights: 不同的keras版本下，resnet backbone不一样，summary发现差别在最后有没有接一个avg_pool
     3. 不要随随便便搬过来一个网络结构替换原有的backbone，如resnet50，因为resnet是为了分类任务设计，大感受野这种性质在分割任务中没好处
     4. 但是可以尝试替换局部的block（引入多尺度&减少参数）
+    5. newly added: Unets with Resnet 34 encoders, kaggle TGS Salt Challenge proved有效
 
 ## fine-grained-unet:
     1. 考虑到一些细粒度的instance，在roi内分割效果更好，而我们恰好能够提供ROI。
@@ -127,6 +128,8 @@
     zeropadding in conv_block: keras的mobineNet源码里面，在实现depthwise block的时候，先做了zeropadding，再做了valid conv
     直接same pad也work，主要影响在模型转换(https://github.com/starhiking/Document/blob/master/Deep_Learning/Note/Pad_Difference.md)
 
+## vnet3d:
+    目前实验下来效果最好的vnet结构
 
 
 

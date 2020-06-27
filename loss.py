@@ -6,27 +6,17 @@ import numpy as np
 ######## losses ######
 def dice_coef(y_true, y_pred):
     smooth = 1.
-    y_true_f = K.flatten(y_true)
-    y_pred = tf.where(y_pred>0.3, tf.ones_like(y_pred), tf.zeros_like(y_pred))
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f))
+    intersection = K.sum(y_true * y_pred)
+    union = K.sum(K.square(y_true) + K.square(y_pred))
+    return (2. * intersection + smooth) / (union + smooth)
 
 
-def dice_p(y_true, y_pred):
-    pos_mask = y_true
-    return dice_coef(y_true*pos_mask, y_pred*pos_mask)
-
-
-def dice_n(y_true, y_pred):
-    neg_mask = 1 - y_true
-    return dice_coef((1-y_true)*neg_mask, (1-y_pred)*neg_mask)
-
-
-def dice_k(y_true, y_pred, channel):
-    y_t = y_true[..., channel]
-    y_p = y_pred[..., channel]
-    return dice_coef(y_t, y_p)
+def dice_k(channel):
+    def dice_perchannel(y_true, y_pred):
+        y_t = y_true[..., channel:channel+1]
+        y_p = y_pred[..., channel:channel+1]
+        return dice_coef(y_t, y_p)
+    return dice_perchannel
 
 
 def dice_loss(y_true, y_pred):
