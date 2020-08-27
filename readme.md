@@ -131,6 +131,13 @@
 ## vnet3d:
     目前实验下来效果最好的vnet结构
 
+## unet2.5d
+    复现论文：Automatic Segmentation of Vestibular Schwannoma from T2-Weighted MRI by Deep Spatial Attention with Hardness-Weighted Loss
+    论文写的贼水，不知道是不是真的有用
+    另外prelu参数量太大，得换成别的激活函数
+
+
+
 
 
 
